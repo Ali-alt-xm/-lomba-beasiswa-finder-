@@ -1,0 +1,27 @@
+{
+  "name": "Lomba & Beasiswa Finder",
+  "short_name": "LombaFinder",
+  "description": "Temukan beasiswa dan lomba terbaru untuk pelajar Indonesia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fef7ee",
+  "theme_color": "#ec7a0d",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}

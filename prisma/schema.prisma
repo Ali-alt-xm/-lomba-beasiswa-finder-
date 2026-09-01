@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Opportunity {
+  id          String   @id @default(cuid())
+  title       String
+  type        String   // "BEASISWA" | "LOMBA"
+  category    String   // "SD" | "SMP" | "SMA_SMK" | "KULIAH"
+  field       String   @default("umum") // "akademik" | "non-akademik" | "sains_teknologi" | "seni_budaya" | "olahraga" | "sosial" | "bisnis" | "umum"
+  description String
+  organizer   String
+  deadline    DateTime
+  location    String   // "online" | "jakarta" | "bandung" | etc.
+  eligibility String
+  sourceUrl   String   @map("source_url")
+  imageUrl    String?  @map("image_url")
+  links       String?  // JSON: [{label, url}] for registration, panduan, WhatsApp, etc.
+  organizerType String @default("private") // "dinas" | "private"
+  alarmType   String   @default("standard") // "standard" | "sidanira" | "team-league" | "elite-cup"
+  alarmConfig String?  // JSON: {daysBefore, checklistItems[], teamTip, earlyBird}
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("opportunities")
+}

@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+@layer base {
+  :root {
+    --brand-50: #fef7ee;
+    --brand-100: #fdedd3;
+    --brand-400: #f09332;
+    --brand-500: #ec7a0d;
+    --brand-600: #dd5f08;
+    --brand-700: #b7470a;
+  }
+
+  .dark {
+    --brand-50: #1c1917;
+    --brand-100: #292524;
+    --brand-400: #f09332;
+    --brand-500: #ec7a0d;
+    --brand-600: #dd5f08;
+    --brand-700: #b7470a;
+  }
+
+  body {
+    @apply bg-brand-50 text-gray-900 antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  .dark body {
+    background-color: #1c1917;
+    color: #f3f4f6;
+  }
+}
+
+@layer components {
+  .badge-beasiswa {
+    @apply inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300;
+  }
+  .badge-lomba {
+    @apply inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-semibold text-pink-700 dark:bg-pink-900/30 dark:text-pink-300;
+  }
+  .badge-urgent {
+    @apply inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-300;
+  }
+  .badge-normal {
+    @apply inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300;
+  }
+}
