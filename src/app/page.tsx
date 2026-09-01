@@ -79,6 +79,30 @@ function sendNotification(title: string, body: string) {
   }
 }
 
+/* ─── Sudah Daftar helpers ─── */
+function getRegistered(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("registered") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveRegistered(ids: string[]) {
+  localStorage.setItem("registered", JSON.stringify(ids));
+}
+
+/* ─── WhatsApp share ─── */
+function shareWhatsApp(opp: { title: string; deadline: Date | string; sourceUrl: string; type: string }) {
+  const days = daysLeft(opp.deadline);
+  const emoji = opp.type === "BEASISWA" ? "🎓" : "🏆";
+  const deadlineStr = formatDate(opp.deadline);
+  const daysText = days < 0 ? "Sudah lewat" : days === 0 ? "Hari ini!" : `${days} hari lagi`;
+  const text = `${emoji} ${opp.title}\n\n📅 Deadline: ${deadlineStr} (${daysText})\n\n🔗 ${opp.sourceUrl}\n\n_Ditemukan di Lomba & Beasiswa Finder_`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+}
+
 /* ─── component ─── */
 export default function HomePage() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -94,6 +118,12 @@ export default function HomePage() {
   const [reminderIds, setReminderIds] = useState<string[]>([]);
   const [showReminders, setShowReminders] = useState(false);
   const [notifStatus, setNotifStatus] = useState<string>("default");
+  const [registeredIds, setRegisteredIds] = useState<string[]>([]);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   useEffect(() => {
     fetch("/api/opportunities")
@@ -106,6 +136,7 @@ export default function HomePage() {
 
     // Load reminders from localStorage
     setReminderIds(getReminders());
+    setRegisteredIds(getRegistered());
     if ("Notification" in window) {
       setNotifStatus(Notification.permission);
     }
@@ -195,6 +226,36 @@ export default function HomePage() {
     [opportunities, reminderIds]
   );
 
+  /* registered toggle */
+  const toggleRegistered = (id: string) => {
+    setRegisteredIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id];
+      saveRegistered(next);
+      return next;
+    });
+  };
+
+  /* calendar data */
+  const calDays = useMemo(() => {
+    const year = calMonth.getFullYear();
+    const month = calMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    return days;
+  }, [calMonth]);
+
+  const getOppsForDay = (day: number) => {
+    const year = calMonth.getFullYear();
+    const month = calMonth.getMonth();
+    return filtered.filter((o) => {
+      const d = new Date(o.deadline);
+      return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+    });
+  };
+
   const filtered = useMemo(() => {
     let result = [...opportunities];
 
@@ -259,14 +320,35 @@ export default function HomePage() {
             </button>
           </div>
         </div>
-        {reminderIds.length > 0 && (
+        <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
           <button
-            onClick={() => setShowReminders(!showReminders)}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 transition"
+            onClick={() => { setShowCalendar(!showCalendar); setShowReminders(false); }}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+              showCalendar
+                ? "bg-brand-500 text-white shadow-sm"
+                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+            }`}
           >
-            🔔 Reminder Saya ({reminderIds.length})
+            📅 Kalender
           </button>
-        )}
+          {reminderIds.length > 0 && (
+            <button
+              onClick={() => { setShowReminders(!showReminders); setShowCalendar(false); }}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                showReminders
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              }`}
+            >
+              🔔 Reminder ({reminderIds.length})
+            </button>
+          )}
+          {registeredIds.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-xl bg-green-50 dark:bg-green-900/20 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 ring-1 ring-green-200 dark:ring-green-800">
+              ✅ Sudah Daftar ({registeredIds.length})
+            </span>
+          )}
+        </div>
       </header>
 
       {/* ── Reminders Panel ── */}
@@ -323,6 +405,11 @@ export default function HomePage() {
                            "⚡ Elite — Daftar Cepat!"}
                         </span>
                       )}
+                      {registeredIds.includes(opp.id) && (
+                        <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                          ✅ Sudah Daftar
+                        </span>
+                      )}
                       {/* Smart checklist */}
                       {opp.alarmConfig && days >= 0 && (() => {
                         try {
@@ -346,13 +433,33 @@ export default function HomePage() {
                         } catch { return null; }
                       })()}
                     </div>
-                    <button
-                      onClick={() => toggleReminder(opp.id)}
-                      className="ml-3 rounded-lg p-1.5 text-amber-500 hover:bg-amber-100 hover:text-amber-700 transition"
-                      title="Hapus reminder"
-                    >
-                      🔔✕
-                    </button>
+                    <div className="ml-3 flex items-center gap-1">
+                      <button
+                        onClick={() => shareWhatsApp({ title: opp.title, deadline: opp.deadline, sourceUrl: opp.sourceUrl, type: opp.type })}
+                        className="rounded-lg p-1.5 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/20 hover:text-green-600 transition"
+                        title="Share ke WhatsApp"
+                      >
+                        💬
+                      </button>
+                      <button
+                        onClick={() => toggleRegistered(opp.id)}
+                        className={`rounded-lg p-1.5 transition ${
+                          registeredIds.includes(opp.id)
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-600 hover:bg-green-200"
+                            : "text-gray-400 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-500"
+                        }`}
+                        title={registeredIds.includes(opp.id) ? "Belum daftar" : "Sudah daftar"}
+                      >
+                        {registeredIds.includes(opp.id) ? "✅" : "☐"}
+                      </button>
+                      <button
+                        onClick={() => toggleReminder(opp.id)}
+                        className="rounded-lg p-1.5 text-amber-500 hover:bg-amber-100 hover:text-amber-700 transition"
+                        title="Hapus reminder"
+                      >
+                        🔔✕
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -514,15 +621,86 @@ export default function HomePage() {
       </div>
 
       {/* ── Results count ── */}
-      {!loading && (
+      {!loading && !showCalendar && (
         <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
           Menampilkan <span className="font-semibold text-gray-700 dark:text-gray-300">{filtered.length}</span> dari{" "}
           <span className="font-semibold text-gray-700 dark:text-gray-300">{opportunities.length}</span> kesempatan
         </p>
       )}
 
+      {/* ── Calendar View ── */}
+      {showCalendar && !loading && (
+        <div className="mb-6 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-md ring-1 ring-brand-100 dark:ring-gray-700">
+          {/* Month navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >
+              ← Sebelumnya
+            </button>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {calMonth.toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
+            </h3>
+            <button
+              onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >
+              Selanjutnya →
+            </button>
+          </div>
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((d) => (
+              <div key={d} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-1">
+                {d}
+              </div>
+            ))}
+          </div>
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {calDays.map((day, i) => {
+              if (day === null) return <div key={`empty-${i}`} />;
+              const opps = getOppsForDay(day);
+              const isToday = new Date().getDate() === day && new Date().getMonth() === calMonth.getMonth() && new Date().getFullYear() === calMonth.getFullYear();
+              return (
+                <div
+                  key={day}
+                  className={`relative min-h-[60px] rounded-lg p-1 text-xs transition ${
+                    isToday ? "bg-brand-100 dark:bg-brand-900/30 ring-2 ring-brand-400" : opps.length > 0 ? "bg-amber-50 dark:bg-amber-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <span className={`font-medium ${isToday ? "text-brand-700 dark:text-brand-300" : "text-gray-700 dark:text-gray-300"}`}>
+                    {day}
+                  </span>
+                  {opps.slice(0, 2).map((opp) => (
+                    <a
+                      key={opp.id}
+                      href={opp.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`block truncate rounded px-1 py-0.5 text-[10px] font-medium mt-0.5 ${
+                        opp.type === "BEASISWA"
+                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                          : "bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300"
+                      }`}
+                      title={opp.title}
+                    >
+                      {opp.title.length > 15 ? opp.title.slice(0, 15) + "…" : opp.title}
+                    </a>
+                  ))}
+                  {opps.length > 2 && (
+                    <span className="block text-[10px] text-gray-500 dark:text-gray-400 px-1">+{opps.length - 2} lagi</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Loading State ── */}
-      {loading && (
+      {loading && !showCalendar && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
@@ -545,7 +723,7 @@ export default function HomePage() {
       )}
 
       {/* ── Empty State ── */}
-      {!loading && filtered.length === 0 && (
+      {!loading && !showCalendar && filtered.length === 0 && (
         <div className="rounded-2xl bg-white dark:bg-gray-800 py-16 text-center shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
           <div className="mx-auto mb-4 text-5xl">🔍</div>
           <h3 className="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
@@ -573,7 +751,7 @@ export default function HomePage() {
       )}
 
       {/* ── Card Grid ── */}
-      {!loading && filtered.length > 0 && (
+      {!loading && !showCalendar && filtered.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((opp) => {
             const days = daysLeft(opp.deadline);
@@ -626,6 +804,11 @@ export default function HomePage() {
                   {opp.isRecurring && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
                       🔁 Tahunan
+                    </span>
+                  )}
+                  {registeredIds.includes(opp.id) && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400 ring-1 ring-green-200 dark:ring-green-800">
+                      ✅ Sudah Daftar
                     </span>
                   )}
                 </div>
@@ -703,26 +886,57 @@ export default function HomePage() {
                   }
                 })()}
 
-                {/* Deadline + Remind button */}
+                {/* Deadline + Actions */}
                 <div className="mt-3 flex items-center justify-between">
                   <p className="text-xs text-gray-400">
                     Deadline: {formatDate(opp.deadline)}
                   </p>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleReminder(opp.id);
-                    }}
-                    className={`rounded-lg p-1.5 transition ${
-                      reminderIds.includes(opp.id)
-                        ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
-                        : "text-gray-300 hover:bg-gray-100 hover:text-amber-500"
-                    }`}
-                    title={reminderIds.includes(opp.id) ? "Hapus reminder" : "Set reminder"}
-                  >
-                    {reminderIds.includes(opp.id) ? "🔔" : "🔕"}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {/* WhatsApp Share */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        shareWhatsApp({ title: opp.title, deadline: opp.deadline, sourceUrl: opp.sourceUrl, type: opp.type });
+                      }}
+                      className="rounded-lg p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition"
+                      title="Share ke WhatsApp"
+                    >
+                      💬
+                    </button>
+                    {/* Sudah Daftar */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleRegistered(opp.id);
+                      }}
+                      className={`rounded-lg p-1.5 transition ${
+                        registeredIds.includes(opp.id)
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-600 hover:bg-green-200"
+                          : "text-gray-300 hover:bg-gray-100 hover:text-green-500"
+                      }`}
+                      title={registeredIds.includes(opp.id) ? "Belum daftar" : "Sudah daftar"}
+                    >
+                      {registeredIds.includes(opp.id) ? "✅" : "☐"}
+                    </button>
+                    {/* Reminder */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleReminder(opp.id);
+                      }}
+                      className={`rounded-lg p-1.5 transition ${
+                        reminderIds.includes(opp.id)
+                          ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                          : "text-gray-300 hover:bg-gray-100 hover:text-amber-500"
+                      }`}
+                      title={reminderIds.includes(opp.id) ? "Hapus reminder" : "Set reminder"}
+                    >
+                      {reminderIds.includes(opp.id) ? "🔔" : "🔕"}
+                    </button>
+                  </div>
                 </div>
               </a>
             );
