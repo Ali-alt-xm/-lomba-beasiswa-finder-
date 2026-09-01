@@ -104,6 +104,110 @@ function shareWhatsApp(opp: { title: string; deadline: Date | string; sourceUrl:
 }
 
 /* ─── component ─── */
+/* ─── Feedback Button Component ─── */
+function FeedbackButton() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [type, setType] = useState<string>("saran");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (!feedback.trim()) return;
+    // Save to localStorage (simple analytics)
+    const existing = JSON.parse(localStorage.getItem("feedback") || "[]");
+    existing.push({
+      text: feedback,
+      type,
+      timestamp: new Date().toISOString(),
+      url: window.location.href,
+    });
+    localStorage.setItem("feedback", JSON.stringify(existing));
+    setSubmitted(true);
+    setTimeout(() => {
+      setIsOpen(false);
+      setFeedback("");
+      setSubmitted(false);
+    }, 2000);
+  };
+
+  return (
+    <>
+      {/* Floating button */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-6 right-6 z-50 rounded-full bg-brand-500 p-4 text-white shadow-lg hover:bg-brand-600 transition hover:scale-105"
+        title="Kirim Feedback"
+      >
+        💬
+      </button>
+
+      {/* Modal */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">💬 Kirim Feedback</h3>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            {submitted ? (
+              <div className="py-8 text-center">
+                <div className="text-4xl mb-2">✅</div>
+                <p className="text-gray-700 dark:text-gray-300">Terima kasih! Feedback kamu sangat berharga.</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Tipe Feedback</label>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                  >
+                    <option value="saran">💡 Saran Fitur</option>
+                    <option value="bug">🐛 Laporan Bug</option>
+                    <option value="lomba">🏆 Tambah Lomba</option>
+                    <option value="beasiswa">🎓 Tambah Beasiswa</option>
+                    <option value="lainnya">📝 Lainnya</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Pesan</label>
+                  <textarea
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    placeholder={
+                      type === "lomba"
+                        ? "Nama lomba, link, deadline, dll..."
+                        : type === "beasiswa"
+                        ? "Nama beasiswa, link, deadline, dll..."
+                        : "Tulis feedback kamu di sini..."
+                    }
+                    rows={4}
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400"
+                  />
+                </div>
+                <button
+                  onClick={handleSubmit}
+                  disabled={!feedback.trim()}
+                  className="w-full rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Kirim Feedback
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function HomePage() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -948,6 +1052,9 @@ export default function HomePage() {
       <footer className="mt-12 border-t border-brand-100 dark:border-gray-700 py-6 text-center text-xs text-gray-400 dark:text-gray-500">
         Lomba & Beasiswa Finder — Dibuat dengan ❤️ untuk mahasiswa Indonesia
       </footer>
+
+      {/* ── Feedback Button ── */}
+      <FeedbackButton />
     </main>
   );
 }
