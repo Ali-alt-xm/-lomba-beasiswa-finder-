@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+type Context = {
+  params: { id: string };
+};
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Context
 ) {
   try {
+    const { id } = context.params;
     const opportunity = await prisma.opportunity.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!opportunity) {
@@ -29,14 +36,15 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Context
 ) {
   try {
+    const { id } = context.params;
     const body = await request.json();
     const { title, type, category, description, organizer, deadline, location, eligibility, sourceUrl, imageUrl } = body;
 
     const opportunity = await prisma.opportunity.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(title && { title }),
         ...(type && { type }),
@@ -63,11 +71,12 @@ export async function PUT(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Context
 ) {
   try {
+    const { id } = context.params;
     await prisma.opportunity.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });
