@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { Opportunity } from "@prisma/client";
 import { useTheme } from "./ThemeProvider";
 
@@ -161,6 +161,133 @@ function shareWhatsApp(opp: { title: string; deadline: Date | string; sourceUrl:
   const daysText = days < 0 ? "Sudah lewat" : days === 0 ? "Hari ini!" : `${days} hari lagi`;
   const text = `${emoji} ${opp.title}\n\n📅 Deadline: ${deadlineStr} (${daysText})\n\n🔗 ${opp.sourceUrl}\n\n_Ditemukan di Lomba & Beasiswa Finder_`;
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+}
+
+/* ─── Calendar export (Google Calendar + .ics) ─── */
+interface CalendarOpp {
+  id: string;
+  title: string;
+  deadline: Date | string;
+  sourceUrl: string;
+  location: string;
+  organizer: string;
+  type: string;
+}
+
+function ymd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}${m}${day}`;
+}
+
+function escapeIcs(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
+}
+
+function googleCalendarUrl(opp: CalendarOpp): string {
+  const dl = new Date(opp.deadline);
+  const next = new Date(dl);
+  next.setDate(next.getDate() + 1); // end date is exclusive for all-day events
+  const emoji = opp.type === "BEASISWA" ? "🎓" : "🏆";
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `${emoji} ${opp.title}`,  
+    dates: `${ymd(dl)}/${ymd(next)}`,
+    details: `Deadline pendaftaran ${opp.title}\n\n${emoji} ${opp.organizer}\n📌 ${opp.location}\n\nSumber: ${opp.sourceUrl}`,
+    location: opp.location === "online" || opp.location === "ONLINE" ? "Online" : opp.location,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function icsContent(opp: CalendarOpp): string {
+  const dl = new Date(opp.deadline);
+  const next = new Date(dl);
+  next.setDate(next.getDate() + 1);
+  const emoji = opp.type === "BEASISWA" ? "🎓" : "🏆";
+  const details = `Deadline pendaftaran ${opp.title}\n${opp.organizer} - ${opp.location}\nSumber: ${opp.sourceUrl}`;
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//LombaFinder//ID",
+    "BEGIN:VEVENT",
+    `UID:lombafinder-${opp.id}@lombafinder.app`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${ymd(dl)}`,
+    `DTEND;VALUE=DATE:${ymd(next)}`,
+    `SUMMARY:${escapeIcs(`${emoji} ${opp.title}`)}`,
+    `DESCRIPTION:${escapeIcs(details)}`,
+    `URL:${opp.sourceUrl}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+function downloadIcs(opp: CalendarOpp) {
+  const blob = new Blob([icsContent(opp)], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${opp.title.replace(/[^a-z0-9]+/gi, "-").slice(0, 50)}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function CalendarExportButton({ opp }: { opp: CalendarOpp }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="rounded-lg p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition"
+        title="Tambahkan ke kalender"
+      >
+        📅
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(googleCalendarUrl(opp), "_blank", "noopener");
+              setOpen(false);
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 transition"
+          >
+            🗓️ Google Calendar
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadIcs(opp);
+              setOpen(false);
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 transition"
+          >
+            📥 Download .ics
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ─── component ─── */
@@ -611,6 +738,9 @@ export default function HomePage() {
                       })()}
                     </div>
                     <div className="ml-3 flex items-center gap-1">
+                      <CalendarExportButton
+                        opp={{ id: opp.id, title: opp.title, deadline: opp.deadline, sourceUrl: opp.sourceUrl, location: opp.location, organizer: opp.organizer, type: opp.type }}
+                      />
                       <button
                         onClick={() => shareWhatsApp({ title: opp.title, deadline: opp.deadline, sourceUrl: opp.sourceUrl, type: opp.type })}
                         className="rounded-lg p-1.5 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/20 hover:text-green-600 transition"
@@ -1069,6 +1199,10 @@ export default function HomePage() {
                     Deadline: {formatDate(opp.deadline)}
                   </p>
                   <div className="flex items-center gap-1">
+                    {/* Calendar Export */}
+                    <CalendarExportButton
+                      opp={{ id: opp.id, title: opp.title, deadline: opp.deadline, sourceUrl: opp.sourceUrl, location: opp.location, organizer: opp.organizer, type: opp.type }}
+                    />
                     {/* WhatsApp Share */}
                     <button
                       onClick={(e) => {
