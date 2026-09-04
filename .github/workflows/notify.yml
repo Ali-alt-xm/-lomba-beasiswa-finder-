@@ -14,4 +14,4 @@ jobs:
         run: |
           curl -fsS -X POST \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            "https://aesthetic-unicorn-b5c8bc.netlify.app/api/push/notify"
+            "https://beasiswa-finder-ali.netlify.app/api/push/notify"

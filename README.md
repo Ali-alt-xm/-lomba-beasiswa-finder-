@@ -4,7 +4,7 @@
 
 ## 🌐 Live Demo
 
-**[aesthetic-unicorn-b5c8bc.netlify.app](https://aesthetic-unicorn-b5c8bc.netlify.app)**
+**[beasiswa-finder-ali.netlify.app](https://beasiswa-finder-ali.netlify.app)**
 
 ## ✨ Fitur
 
