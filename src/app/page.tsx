@@ -163,6 +163,49 @@ function shareWhatsApp(opp: { title: string; deadline: Date | string; sourceUrl:
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 }
 
+/* ─── Share whole list to WhatsApp ─── */
+function shareListWhatsApp(opps: Array<{ title: string; deadline: Date | string; sourceUrl: string; type: string }>) {
+  if (!opps.length) return;
+
+  const shown = opps.slice(0, 20);
+  const lomba = shown.filter((o) => o.type === "LOMBA");
+  const beasiswa = shown.filter((o) => o.type === "BEASISWA");
+
+  const lines: string[] = [];
+  lines.push("📢 *LOMBA & BEASISWA FINDER*");
+  lines.push(`Ada ${opps.length} kesempatan yang lagi dibuka!`);
+  lines.push("");
+
+  const fmt = (o: { title: string; deadline: Date | string; sourceUrl: string }, i: number) => {
+    const days = daysLeft(o.deadline);
+    const dl = formatDate(o.deadline);
+    lines.push(`${i + 1}. ${o.title} — ${dl} (${days === 0 ? "hari ini!" : `${days} hari lagi`})`);
+    lines.push(`   ${o.sourceUrl}`);
+  };
+
+  if (lomba.length) {
+    lines.push(`🏆 *LOMBA (${lomba.length}):*`);
+    lomba.forEach(fmt);
+    lines.push("");
+  }
+
+  if (beasiswa.length) {
+    lines.push(`🎓 *BEASISWA (${beasiswa.length}):*`);
+    beasiswa.forEach(fmt);
+    lines.push("");
+  }
+
+  if (opps.length > shown.length) {
+    lines.push(`…dan ${opps.length - shown.length} lainnya!`);
+    lines.push("");
+  }
+
+  lines.push(`🔗 Lihat semua: https://beasiswa-finder-ali.netlify.app`);
+  lines.push("_Ditemukan di Lomba & Beasiswa Finder_");
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+}
+
 /* ─── Calendar export (Google Calendar + .ics) ─── */
 interface CalendarOpp {
   id: string;
@@ -634,6 +677,13 @@ export default function HomePage() {
             }`}
           >
             📅 Kalender
+          </button>
+          <button
+            onClick={() => shareListWhatsApp(filtered)}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 ring-1 ring-green-200 dark:ring-green-800 hover:bg-green-100 dark:hover:bg-green-900/30 transition"
+            title="Bagikan daftar ini ke WhatsApp"
+          >
+            📤 Share
           </button>
           {reminderIds.length > 0 && (
             <button
