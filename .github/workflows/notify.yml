@@ -1,0 +1,17 @@
+name: Send Push Notifications
+
+on:
+  schedule:
+    # Every 6 hours (00/06/12/18 UTC = 07/13/19/01 WIB)
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deadline push notifications
+        run: |
+          curl -fsS -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "https://aesthetic-unicorn-b5c8bc.netlify.app/api/push/notify"

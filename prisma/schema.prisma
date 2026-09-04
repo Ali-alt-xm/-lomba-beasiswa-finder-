@@ -29,3 +29,16 @@ model Opportunity {
 
   @@map("opportunities")
 }
+
+model PushSubscription {
+  id             String   @id @default(cuid())
+  endpoint       String   @unique
+  p256dh         String
+  auth           String
+  opportunityIds String   @default("[]") // JSON array of opportunity ids the user set reminders for
+  notified       String   @default("{}") // JSON map: { [oppId]: "YYYY-MM-DD" } — last push date per opportunity
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("push_subscriptions")
+}

@@ -93,6 +93,66 @@ function saveRegistered(ids: string[]) {
   localStorage.setItem("registered", JSON.stringify(ids));
 }
 
+/* ─── Push notification sync (server-side web push) ─── */
+function getLocalNotified(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem("notifiedLocal") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalNotified(map: Record<string, string>) {
+  localStorage.setItem("notifiedLocal", JSON.stringify(map));
+}
+
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64_ = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64_);
+  const arr = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function syncPushSubscription(ids: string[]) {
+  if (typeof window === "undefined") return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!vapidKey) return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    if (ids.length === 0) {
+      if (sub) await sub.unsubscribe();
+      return;
+    }
+
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+    }
+
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subscription: sub.toJSON(),
+        opportunityIds: ids,
+      }),
+    });
+  } catch (err) {
+    console.log("push sync failed:", err);
+  }
+}
+
 /* ─── WhatsApp share ─── */
 function shareWhatsApp(opp: { title: string; deadline: Date | string; sourceUrl: string; type: string }) {
   const days = daysLeft(opp.deadline);
@@ -271,6 +331,13 @@ export default function HomePage() {
         } catch {}
 
         if (days >= 0 && days <= triggerDays) {
+          // Dedupe: only fire once per opportunity per day
+          const localNotified = getLocalNotified();
+          const todayKey = new Date().toDateString();
+          if (localNotified[opp.id] === todayKey) return;
+          localNotified[opp.id] = todayKey;
+          saveLocalNotified(localNotified);
+
           let body = `${opp.title} — ${formatDate(opp.deadline)}`;
           // Add smart checklist tip
           try {
@@ -294,6 +361,12 @@ export default function HomePage() {
     const interval = setInterval(checkReminders, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, [opportunities, reminderIds]);
+
+  // Keep the push server in sync with the user's reminders (also heals on mount)
+  useEffect(() => {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    syncPushSubscription(reminderIds);
+  }, [reminderIds, notifStatus]);
 
   /* derive filter options from data */
   const categories = useMemo(
