@@ -94,6 +94,29 @@ function saveRegistered(ids: string[]) {
   localStorage.setItem("registered", JSON.stringify(ids));
 }
 
+/* ─── Bookmark helpers ─── */
+function getBookmarks(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("bookmarks") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveBookmarks(ids: string[]) {
+  localStorage.setItem("bookmarks", JSON.stringify(ids));
+}
+
+/* ─── "Baru minggu ini" check ─── */
+function isNewThisWeek(opp: { createdAt?: string | Date }): boolean {
+  if (!opp.createdAt) return false;
+  const created = new Date(opp.createdAt);
+  const now = new Date();
+  const diff = now.getTime() - created.getTime();
+  return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+}
+
 /* ─── Push notification sync (server-side web push) ─── */
 function getLocalNotified(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -453,6 +476,8 @@ export default function HomePage() {
   const [fieldFilter, setFieldFilter] = useState<string>("ALL");
   const [orgTypeFilter, setOrgTypeFilter] = useState<string>("ALL");
   const [biayaFilter, setBiayaFilter] = useState<string>("ALL");
+  const [bookmarkIds, setBookmarkIds] = useState<string[]>([]);
+  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
   const [reminderIds, setReminderIds] = useState<string[]>([]);
   const [showReminders, setShowReminders] = useState(false);
   const [notifStatus, setNotifStatus] = useState<string>("default");
@@ -475,6 +500,7 @@ export default function HomePage() {
     // Load reminders from localStorage
     setReminderIds(getReminders());
     setRegisteredIds(getRegistered());
+    setBookmarkIds(getBookmarks());
     if ("Notification" in window) {
       setNotifStatus(Notification.permission);
     }
@@ -586,6 +612,15 @@ export default function HomePage() {
     });
   };
 
+  /* bookmark toggle */
+  const toggleBookmark = (id: string) => {
+    setBookmarkIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id];
+      saveBookmarks(next);
+      return next;
+    });
+  };
+
   /* calendar data */
   const calDays = useMemo(() => {
     const year = calMonth.getFullYear();
@@ -633,6 +668,9 @@ export default function HomePage() {
         biayaFilter === "GRATIS" ? o.isFree !== false : o.isFree === false
       );
     }
+    if (showBookmarksOnly) {
+      result = result.filter((o) => bookmarkIds.includes(o.id));
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -650,7 +688,7 @@ export default function HomePage() {
     );
 
     return result;
-  }, [opportunities, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, biayaFilter, searchQuery]);
+  }, [opportunities, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, biayaFilter, showBookmarksOnly, bookmarkIds, searchQuery]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
@@ -677,6 +715,12 @@ export default function HomePage() {
           </div>
         </div>
         <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+          <Link
+            href="/stats"
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+          >
+            📊 Stats
+          </Link>
           <button
             onClick={() => { setShowCalendar(!showCalendar); setShowReminders(false); }}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
@@ -694,6 +738,18 @@ export default function HomePage() {
           >
             📤 Share
           </button>
+          {bookmarkIds.length > 0 && (
+            <button
+              onClick={() => setShowBookmarksOnly(!showBookmarksOnly)}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                showBookmarksOnly
+                  ? "bg-yellow-500 text-white shadow-sm"
+                  : "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 ring-1 ring-yellow-200 dark:ring-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
+              }`}
+            >
+              ⭐ Disimpan ({bookmarkIds.length})
+            </button>
+          )}
           {reminderIds.length > 0 && (
             <button
               onClick={() => { setShowReminders(!showReminders); setShowCalendar(false); }}
@@ -1121,6 +1177,7 @@ export default function HomePage() {
               setFieldFilter("ALL");
               setOrgTypeFilter("ALL");
               setBiayaFilter("ALL");
+              setShowBookmarksOnly(false);
             }}
             className="mt-4 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 transition"
           >
@@ -1181,6 +1238,11 @@ export default function HomePage() {
                   {opp.isRecurring && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
                       🔁 Tahunan
+                    </span>
+                  )}
+                  {isNewThisWeek(opp) && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-800">
+                      🆕 Baru
                     </span>
                   )}
                   {registeredIds.includes(opp.id) && (
@@ -1304,6 +1366,22 @@ export default function HomePage() {
                       title="Share ke WhatsApp"
                     >
                       💬
+                    </button>
+                    {/* Bookmark */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleBookmark(opp.id);
+                      }}
+                      className={`rounded-lg p-1.5 transition ${
+                        bookmarkIds.includes(opp.id)
+                          ? "bg-yellow-100 text-yellow-600 hover:bg-yellow-200"
+                          : "text-gray-300 hover:bg-gray-100 hover:text-yellow-500"
+                      }`}
+                      title={bookmarkIds.includes(opp.id) ? "Hapus bookmark" : "Simpan (bookmark)"}
+                    >
+                      {bookmarkIds.includes(opp.id) ? "⭐" : "☆"}
                     </button>
                     {/* Sudah Daftar */}
                     <button

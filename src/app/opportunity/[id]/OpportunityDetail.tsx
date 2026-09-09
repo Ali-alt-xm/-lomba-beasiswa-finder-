@@ -84,6 +84,28 @@ function saveRegistered(ids: string[]) {
   localStorage.setItem("registered", JSON.stringify(ids));
 }
 
+/* ─── bookmarks (shares localStorage with home page) ─── */
+function getBookmarks(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("bookmarks") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveBookmarks(ids: string[]) {
+  localStorage.setItem("bookmarks", JSON.stringify(ids));
+}
+
+function isNewThisWeek(opp: { createdAt?: string | Date }): boolean {
+  if (!opp.createdAt) return false;
+  const created = new Date(opp.createdAt);
+  const now = new Date();
+  const diff = now.getTime() - created.getTime();
+  return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+}
+
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
   const base64_ = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -287,6 +309,7 @@ export default function OpportunityDetail({
 }) {
   const [reminderIds, setReminderIds] = useState<string[]>([]);
   const [registeredIds, setRegisteredIds] = useState<string[]>([]);
+  const [bookmarkIds, setBookmarkIds] = useState<string[]>([]);
   const [calOpen, setCalOpen] = useState(false);
   const calRef = useRef<HTMLDivElement>(null);
   const [notifStatus, setNotifStatus] = useState<string>("default");
@@ -294,6 +317,7 @@ export default function OpportunityDetail({
   useEffect(() => {
     setReminderIds(getReminders());
     setRegisteredIds(getRegistered());
+    setBookmarkIds(getBookmarks());
     if ("Notification" in window) setNotifStatus(Notification.permission);
   }, []);
 
@@ -317,6 +341,7 @@ export default function OpportunityDetail({
   const emoji = opp.type === "BEASISWA" ? "🎓" : "🏆";
   const isReminded = reminderIds.includes(opp.id);
   const isRegistered = registeredIds.includes(opp.id);
+  const isBookmarked = bookmarkIds.includes(opp.id);
 
   const links: { label: string; url: string }[] = (() => {
     if (!opp.links) return [];
@@ -346,6 +371,14 @@ export default function OpportunityDetail({
     setRegisteredIds((prev) => {
       const next = prev.includes(opp.id) ? prev.filter((r) => r !== opp.id) : [...prev, opp.id];
       saveRegistered(next);
+      return next;
+    });
+  };
+
+  const toggleBookmark = () => {
+    setBookmarkIds((prev) => {
+      const next = prev.includes(opp.id) ? prev.filter((b) => b !== opp.id) : [...prev, opp.id];
+      saveBookmarks(next);
       return next;
     });
   };
@@ -392,6 +425,11 @@ export default function OpportunityDetail({
         {opp.isRecurring && (
           <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
             🔁 Tahunan
+          </span>
+        )}
+        {isNewThisWeek(opp) && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-800">
+            🆕 Baru
           </span>
         )}
         <span
@@ -482,6 +520,16 @@ export default function OpportunityDetail({
           }`}
         >
           {isRegistered ? "✅ Sudah Daftar — Klik untuk batal" : "☐ Tandai Sudah Daftar"}
+        </button>
+        <button
+          onClick={toggleBookmark}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-bold transition ring-1 ${
+            isBookmarked
+              ? "bg-yellow-500 text-white ring-yellow-500 hover:bg-yellow-600"
+              : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 ring-gray-200 dark:ring-gray-700 hover:bg-yellow-50 dark:hover:bg-gray-700"
+          }`}
+        >
+          {isBookmarked ? "⭐ Tersimpan — Klik untuk hapus" : "☆ Simpan (Bookmark)"}
         </button>
       </div>
 
