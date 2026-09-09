@@ -8,6 +8,9 @@
  *  4. https://kompetisionline.com         — Kompetisi online terkurasi
  *  5. https://kompetisinasional.com       — Kompetisi nasional terkurasi
  *  6. https://pusatprestasinasional...    — Puspresnas national events
+ *  7. https://olimnesia.com/events        — University lomba (JSON in event attrs)
+ *  8. https://posi.id/competitions        — POSI olympiads with reg deadlines
+ *  9. Annual math competitions (EMC, KMNR) — recurring elite events
  *
  * Instagram requires auth and cannot be scraped. Use /admin for those.
  *
@@ -489,6 +492,208 @@ async function scrapeKompetisiNasional(): Promise<ScrapedEntry[]> {
   }
 }
 
+// ─── Scraper 7: olimnesia.com/events ─────────────────────────────
+async function scrapeOlimnesia(): Promise<ScrapedEntry[]> {
+  console.log("📡 [7/8] olimnesia.com/events...");
+  const entries: ScrapedEntry[] = [];
+  try {
+    // Paginate until we hit a page with no events or all-expired (listing is date-sorted desc)
+    for (let page = 1; page <= 40; page++) {
+      const res = await fetch(`https://olimnesia.com/events?page=${page}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; BeasiswaFinder/1.0)" },
+      });
+      const html = await res.text();
+
+      // Decode HTML entities then pull every event="{...}" JSON blob
+      const decoded = html.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&#039;/g, "'");
+      const attrRe = /event="(\{[\s\S]*?\})"/g;
+      let attrMatch;
+
+      let anyFuture = false;
+      while ((attrMatch = attrRe.exec(decoded)) !== null) {
+        try {
+          const obj = JSON.parse(attrMatch[1]);
+          // Only real competitions, skip tryouts/latihan soal
+          if (obj.type !== "competition") continue;
+          if (!obj.title || !obj.end_at) continue;
+
+          const deadline = new Date(obj.end_at.replace(" ", "T"));
+          if (isNaN(deadline.getTime()) || deadline < new Date()) continue;
+          anyFuture = true;
+
+          const catNames = (obj.categories || []).map((c: any) => c.name).join(" ");
+          const desc = (obj.description || obj.title || "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          const isFree = !obj.price || obj.price === 0;
+
+          entries.push({
+            title: obj.title.replace(/<[^>]+>/g, "").trim(),
+            type: "LOMBA",
+            category: categorizeLevel(obj.title + " " + catNames),
+            description: `${obj.title}. ${desc}`,
+            organizer: "Olimnesia (event listing)",
+            deadline,
+            location: categorizeLocation(catNames + " " + obj.title),
+            eligibility: `Biaya: ${isFree ? "Gratis" : "Rp " + obj.price.toLocaleString("id-ID")} — cek detail untuk syarat`,
+            sourceUrl: `https://olimnesia.com/events/${obj.slug}`,
+            imageUrl: obj.image || obj.logo || null,
+            field: categorizeField(obj.title, catNames),
+            links: [{ label: "📝 Lihat Detail & Daftar", url: `https://olimnesia.com/events/${obj.slug}` }],
+          });
+        } catch {
+          // skip bad JSON
+        }
+      }
+
+      if (!anyFuture) break; // everything on this page is expired → stop
+    }
+    console.log(`   ✅ ${entries.length} entries`);
+    return entries;
+  } catch (err) {
+    console.error("   ❌ Failed:", err);
+    return [];
+  }
+}
+
+// ─── Scraper 8: posi.id/competitions ─────────────────────────────
+async function scrapePOSI(): Promise<ScrapedEntry[]> {
+  console.log("📡 [8/8] posi.id/competitions...");
+  const entries: ScrapedEntry[] = [];
+  try {
+    for (let page = 1; page <= 12; page++) {
+      const res = await fetch(`https://posi.id/competitions?page=${page}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; BeasiswaFinder/1.0)" },
+      });
+      const html = await res.text();
+
+      // Each competition card has id="competition-<id>"
+      const idRe = /id="competition-(\d+)"/g;
+      const ids: string[] = [];
+      let idMatch;
+      while ((idMatch = idRe.exec(html)) !== null) ids.push(idMatch[1]);
+      if (ids.length === 0) break;
+
+      for (const id of ids) {
+        const idx = html.indexOf(`id="competition-${id}"`);
+        const block = html.slice(idx, idx + 9000);
+
+        // Only open competitions (Terbuka = open, Ditutup = closed)
+        if (!block.includes("Terbuka")) continue;
+
+        const clean = block
+          .replace(/<script[\s\S]*?<\/script>/g, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/[ \t]+/g, " ")
+          .replace(/\s+/g, " ");
+
+        const titleMatch = block.match(/<h3[^>]*>([^<]+)<\/h3>/);
+        const title = titleMatch?.[1]?.trim();
+        if (!title || title.length < 5) continue;
+
+        // Registration deadline: "... sampai Sab, 20 Mar 2027 23:59"
+        const reg = clean.match(/sampai\s*\w+,\s*(\d{1,2})\s*(\w+)\s*(\d{4})/);
+        if (!reg) continue;
+        const deadline = parseIndonesianDate(`${reg[1]} ${reg[2]} ${reg[3]}`);
+        if (!deadline || deadline < new Date()) continue;
+
+        const price = block.includes("GRATIS") ? "Gratis" : (clean.match(/Rp\s*([\d.]+)/)?.[1] || "");
+        const location = clean.includes("Online") && !clean.includes("Offline") ? "ONLINE" : clean.includes("Offline") ? "OFFLINE" : "ONLINE";
+        const levelMatch = clean.match(/\d+\s*bidang\s*([A-Za-z/\s]+?)\s+Tanggal Kompetisi/);
+        const level = levelMatch ? levelMatch[1].trim() : "";
+
+        // Detail link: href="/competitions/<slug>" right before "Lihat Detail"
+        const lihatIdx = block.indexOf("Lihat Detail");
+        const linkMatch = block.slice(0, lihatIdx > 0 ? lihatIdx : block.length).match(/href="(\/competitions\/[^"]+)"/);
+        const detailUrl = linkMatch ? `https://posi.id${linkMatch[1]}` : "https://posi.id/competitions";
+
+        entries.push({
+          title,
+          type: "LOMBA",
+          category: categorizeLevel(title + " " + level),
+          description: `${title}. Kompetisi oleh POSI (Pusat Olimpiade Sains Indonesia). Level: ${level || "Lihat detail"}. Biaya: ${price ? "Rp " + price : "Lihat detail"}.`,
+          organizer: "POSI (Pusat Olimpiade Sains Indonesia)",
+          deadline,
+          location,
+          eligibility: `Level: ${level || "Lihat detail"}. Biaya: ${price ? "Rp " + price : "Gratis/lihat detail"}.`,
+          sourceUrl: detailUrl,
+          imageUrl: null,
+          field: categorizeField(title, level),
+          links: [{ label: "📝 Lihat Detail & Daftar", url: detailUrl }],
+        });
+      }
+    }
+    console.log(`   ✅ ${entries.length} entries`);
+    return entries;
+  } catch (err) {
+    console.error("   ❌ Failed:", err);
+    return [];
+  }
+}
+
+// ─── Scraper 9: annual math competitions (EMC, KMNR) ───────────
+// These are annual recurring events with predictable registration windows.
+// Deadlines roll forward each year so the daily auto-scrape keeps them fresh.
+async function scrapeAnnualMath(): Promise<ScrapedEntry[]> {
+  console.log("📡 [9/9] annual math competitions (EMC, KMNR)...");
+  const entries: ScrapedEntry[] = [];
+  const now = new Date();
+
+  // EMC (Eduversal Mathematics Competition) — Eduversal Foundation
+  // Registration window confirmed: 1 Jul – 30 Sep each year (emc.competzy.com)
+  const emcYear = now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
+  const emcDeadline = new Date(emcYear, 8, 30); // 30 Sep
+  entries.push({
+    title: `EMC ${emcYear} (Eduversal Mathematics Competition)`,
+    type: "LOMBA",
+    category: "SMA_SMK",
+    description: `Kompetisi matematika tahunan terbesar di Indonesia oleh Eduversal Foundation (PT Edukasi Universal Indonesia). 9 tingkatan kelas, 70+ test center. Alur: Seleksi Kab/Kota (10 Okt), Provinsi (24 Okt), Nasional (21 Nov), Pengumuman (12 Des ${emcYear}).`,
+    organizer: "Eduversal Foundation (PT Edukasi Universal Indonesia)",
+    deadline: emcDeadline,
+    location: "ONLINE",
+    eligibility: `Pelajar SD/SMP/SMA — 9 tingkatan kelas. Pendaftaran 1 Jul – 30 Sep ${emcYear}.`,
+    sourceUrl: "https://emc.competzy.com/",
+    imageUrl: null,
+    field: "sains_teknologi",
+    links: [
+      { label: "📝 Daftar Sekarang", url: "https://emc.competzy.com/" },
+      { label: "📄 Jadwal Resmi EMC", url: "https://exademy.com/jadwal-ujian/kompetisi-matematika-emc-smc-kmnr/" },
+    ],
+    organizerType: "private",
+    alarmType: "elite-cup",
+    isRecurring: true,
+  });
+
+  // KMNR (Kompetisi Matematika Nalaria Realistik) — Klinik Pendidikan MIPA (KPM)
+  // Registration window (estimated from KMNR 21 pattern): 1 Nov – 16 Dec each year
+  const kmnrYear = now.getMonth() >= 11 ? now.getFullYear() + 1 : now.getFullYear();
+  const kmnrDeadline = new Date(kmnrYear, 11, 16); // 16 Dec
+  entries.push({
+    title: `KMNR ${kmnrYear} (Kompetisi Matematika Nalaria Realistik)`,
+    type: "LOMBA",
+    category: "SMP",
+    description: `Kompetisi matematika nalaria realistik tahunan oleh Klinik Pendidikan MIPA (KPM) untuk SD dan SMP. Alur (pola KMNR 21): Pendaftaran Nov–Des, Penyisihan Kota/Kab (Jan), Semifinal (Feb), Final (Feb).`,
+    organizer: "Klinik Pendidikan MIPA (KPM)",
+    deadline: kmnrDeadline,
+    location: "OFFLINE",
+    eligibility: `Pelajar SD dan SMP. Pendaftaran ~1 Nov – 16 Des ${kmnrYear} (jadwal resmi rilis akhir tahun).`,
+    sourceUrl: "https://kpm.read1institute.org/",
+    imageUrl: null,
+    field: "sains_teknologi",
+    links: [
+      { label: "📝 Daftar / Info", url: "https://kpm.read1institute.org/" },
+      { label: "📄 Jadwal KMNR", url: "https://exademy.com/jadwal-ujian/kompetisi-matematika-emc-smc-kmnr/" },
+    ],
+    organizerType: "private",
+    alarmType: "elite-cup",
+    isRecurring: true,
+  });
+
+  console.log(`   ✅ ${entries.length} entries`);
+  return entries;
+}
+
 // ─── Scraper 6: pusatprestasinasional.kemendikdasmen.go.id ──────
 async function scrapePuspresnas(): Promise<ScrapedEntry[]> {
   console.log("📡 [6/6] pusatprestasinasional.kemendikdasmen.go.id...");
@@ -674,7 +879,7 @@ async function cleanupExpired(): Promise<number> {
 
 // ─── Main ────────────────────────────────────────────────────────
 async function main() {
-  console.log("🚀 Starting scraper (6 sources)...\n");
+  console.log("🚀 Starting scraper (9 sources)...\n");
 
   const results = await Promise.all([
     scrapeLuarkampusBeasiswa(),
@@ -683,6 +888,9 @@ async function main() {
     scrapeKompetisiOnline(),
     scrapeKompetisiNasional(),
     scrapePuspresnas(),
+    scrapeOlimnesia(),
+    scrapePOSI(),
+    scrapeAnnualMath(),
   ]);
 
   const allEntries = results.flat();
