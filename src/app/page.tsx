@@ -452,6 +452,7 @@ export default function HomePage() {
   const [organizerFilter, setOrganizerFilter] = useState<string>("ALL");
   const [fieldFilter, setFieldFilter] = useState<string>("ALL");
   const [orgTypeFilter, setOrgTypeFilter] = useState<string>("ALL");
+  const [biayaFilter, setBiayaFilter] = useState<string>("ALL");
   const [reminderIds, setReminderIds] = useState<string[]>([]);
   const [showReminders, setShowReminders] = useState(false);
   const [notifStatus, setNotifStatus] = useState<string>("default");
@@ -627,6 +628,11 @@ export default function HomePage() {
     if (orgTypeFilter !== "ALL") {
       result = result.filter((o) => (o.organizerType || "private") === orgTypeFilter);
     }
+    if (biayaFilter !== "ALL") {
+      result = result.filter((o) =>
+        biayaFilter === "GRATIS" ? o.isFree !== false : o.isFree === false
+      );
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -644,7 +650,7 @@ export default function HomePage() {
     );
 
     return result;
-  }, [opportunities, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, searchQuery]);
+  }, [opportunities, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, biayaFilter, searchQuery]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
@@ -887,6 +893,22 @@ export default function HomePage() {
               ))}
             </select>
           </div>
+          {/* Biaya filter */}
+          <div className="flex-1 min-w-[140px]">
+            <label className="mb-1 block text-xs font-medium text-gray-500">
+              Biaya
+            </label>
+            <select
+              value={biayaFilter}
+              onChange={(e) => setBiayaFilter(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            >
+              <option value="ALL">Semua</option>
+              <option value="GRATIS">🆓 Gratis</option>
+              <option value="BERBAYAR">💰 Berbayar</option>
+            </select>
+          </div>
+
           {/* Type filter */}
           <div className="flex-1 min-w-[140px]">
             <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -1098,6 +1120,7 @@ export default function HomePage() {
               setOrganizerFilter("ALL");
               setFieldFilter("ALL");
               setOrgTypeFilter("ALL");
+              setBiayaFilter("ALL");
             }}
             className="mt-4 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 transition"
           >
@@ -1181,6 +1204,17 @@ export default function HomePage() {
                 <p className="mb-3 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                   {opp.description}
                 </p>
+
+                {/* Biaya badge */}
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    opp.isFree === false
+                      ? "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 ring-1 ring-orange-200 dark:ring-orange-800"
+                      : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 ring-1 ring-green-200 dark:ring-green-800"
+                  }`}
+                >
+                  {opp.isFree === false ? "💰 Berbayar" : "🆓 Gratis"}
+                </span>
 
                 {/* Field badge */}
                 {opp.field && opp.field !== "umum" && (

@@ -39,6 +39,7 @@ interface ScrapedEntry {
   alarmType?: string; // "standard" | "sidanira" | "team-league" | "elite-cup"
   alarmConfig?: string; // JSON config
   isRecurring?: boolean;
+  isFree?: boolean;
 }
 
 // Classify organizer as dinas (government) or private
@@ -540,6 +541,7 @@ async function scrapeOlimnesia(): Promise<ScrapedEntry[]> {
             sourceUrl: `https://olimnesia.com/events/${obj.slug}`,
             imageUrl: obj.image || obj.logo || null,
             field: categorizeField(obj.title, catNames),
+            isFree,
             links: [{ label: "📝 Lihat Detail & Daftar", url: `https://olimnesia.com/events/${obj.slug}` }],
           });
         } catch {
@@ -599,6 +601,7 @@ async function scrapePOSI(): Promise<ScrapedEntry[]> {
         if (!deadline || deadline < new Date()) continue;
 
         const price = block.includes("GRATIS") ? "Gratis" : (clean.match(/Rp\s*([\d.]+)/)?.[1] || "");
+        const isFree = price === "Gratis" || !price;
         const location = clean.includes("Online") && !clean.includes("Offline") ? "ONLINE" : clean.includes("Offline") ? "OFFLINE" : "ONLINE";
         const levelMatch = clean.match(/\d+\s*bidang\s*([A-Za-z/\s]+?)\s+Tanggal Kompetisi/);
         const level = levelMatch ? levelMatch[1].trim() : "";
@@ -620,6 +623,7 @@ async function scrapePOSI(): Promise<ScrapedEntry[]> {
           sourceUrl: detailUrl,
           imageUrl: null,
           field: categorizeField(title, level),
+          isFree,
           links: [{ label: "📝 Lihat Detail & Daftar", url: detailUrl }],
         });
       }
@@ -663,6 +667,7 @@ async function scrapeAnnualMath(): Promise<ScrapedEntry[]> {
     organizerType: "private",
     alarmType: "elite-cup",
     isRecurring: true,
+    isFree: false,
   });
 
   // SMC (SCN Mathematics Competition) — LKP Senyum Cerdas Nusantara
@@ -690,6 +695,7 @@ async function scrapeAnnualMath(): Promise<ScrapedEntry[]> {
     organizerType: "private",
     alarmType: "elite-cup",
     isRecurring: true,
+    isFree: false,
   });
 
   // KMNR (Kompetisi Matematika Nalaria Realistik) — Klinik Pendidikan MIPA (KPM)
@@ -715,6 +721,7 @@ async function scrapeAnnualMath(): Promise<ScrapedEntry[]> {
     organizerType: "private",
     alarmType: "elite-cup",
     isRecurring: true,
+    isFree: false,
   });
 
   console.log(`   ✅ ${entries.length} entries`);
@@ -858,13 +865,15 @@ async function upsertEntries(entries: ScrapedEntry[]) {
       const aType = entry.alarmType || classifyAlarmType(entry.title, entry.organizer, orgType, entry.description);
       const aConfig = entry.alarmConfig || generateAlarmConfig(aType);
       const recurring = entry.isRecurring !== undefined ? entry.isRecurring : detectRecurring(entry.title);
+      const isFree = entry.isFree !== undefined ? entry.isFree : true;
 
       if (existing) {
         if (
           existing.deadline.getTime() !== entry.deadline.getTime() ||
           existing.description !== entry.description ||
           (entry.links && !existing.links) ||
-          existing.organizerType !== orgType
+          existing.organizerType !== orgType ||
+          existing.isFree !== isFree
         ) {
           await prisma.opportunity.update({
             where: { id: existing.id },
@@ -879,12 +888,13 @@ async function upsertEntries(entries: ScrapedEntry[]) {
               alarmType: aType,
               alarmConfig: aConfig,
               isRecurring: recurring,
+              isFree,
             },
           });
           updated++;
         }
       } else {
-        await prisma.opportunity.create({ data: { ...entry, links: entry.links ? JSON.stringify(entry.links) : null, organizerType: orgType, alarmType: aType, alarmConfig: aConfig, isRecurring: recurring } });
+        await prisma.opportunity.create({ data: { ...entry, links: entry.links ? JSON.stringify(entry.links) : null, organizerType: orgType, alarmType: aType, alarmConfig: aConfig, isRecurring: recurring, isFree } });
         created++;
       }
     } catch (err) {

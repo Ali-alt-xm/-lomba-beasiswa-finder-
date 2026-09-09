@@ -25,6 +25,7 @@ model Opportunity {
   alarmType   String   @default("standard") // "standard" | "sidanira" | "team-league" | "elite-cup"
   alarmConfig String?  // JSON: {daysBefore, checklistItems[], teamTip, earlyBird}
   isRecurring Boolean  @default(false)
+  isFree      Boolean  @default(true) // false = ada biaya pendaftaran
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("opportunities")

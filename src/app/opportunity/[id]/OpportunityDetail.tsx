@@ -233,8 +233,58 @@ function getAlarmTip(opp: DetailOpp, days: number): string | null {
   }
 }
 
+/* ─── related mini-card ─── */
+function RelatedCard({ opp }: { opp: DetailOpp }) {
+  const days = daysLeft(opp.deadline);
+  const emoji = opp.type === "BEASISWA" ? "🎓" : "🏆";
+  const isUrgent = days >= 0 && days <= 7;
+
+  return (
+    <Link
+      href={`/opportunity/${opp.id}`}
+      className="group flex flex-col rounded-xl bg-white dark:bg-gray-800 p-4 ring-1 ring-gray-100 dark:ring-gray-700 transition hover:shadow-md hover:ring-brand-200 dark:hover:ring-brand-800"
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <span className={opp.type === "BEASISWA" ? "badge-beasiswa" : "badge-lomba"}>
+          {opp.type === "BEASISWA" ? "🎓" : "🏆"}
+        </span>
+        {opp.isFree === false ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:text-orange-400">
+            💰 Berbayar
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
+            🆓 Gratis
+          </span>
+        )}
+      </div>
+      <h3 className="mb-2 text-sm font-bold leading-snug text-gray-900 dark:text-white group-hover:text-brand-600 transition line-clamp-2">
+        {emoji} {opp.title}
+      </h3>
+      <p className="mt-auto text-xs text-gray-500 dark:text-gray-400">
+        {days < 0 ? (
+          <span className="text-red-500">Sudah lewat</span>
+        ) : days === 0 ? (
+          <span className="font-semibold text-red-500">🔥 Hari ini!</span>
+        ) : isUrgent ? (
+          <span className="font-semibold text-red-500">🔥 {days} hari lagi</span>
+        ) : (
+          `${days} hari lagi`
+        )}{" "}
+        • {formatDate(opp.deadline)}
+      </p>
+    </Link>
+  );
+}
+
 /* ─── component ─── */
-export default function OpportunityDetail({ opp }: { opp: DetailOpp }) {
+export default function OpportunityDetail({
+  opp,
+  related = [],
+}: {
+  opp: DetailOpp;
+  related?: DetailOpp[];
+}) {
   const [reminderIds, setReminderIds] = useState<string[]>([]);
   const [registeredIds, setRegisteredIds] = useState<string[]>([]);
   const [calOpen, setCalOpen] = useState(false);
@@ -344,6 +394,15 @@ export default function OpportunityDetail({ opp }: { opp: DetailOpp }) {
             🔁 Tahunan
           </span>
         )}
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+            opp.isFree === false
+              ? "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 ring-1 ring-orange-200 dark:ring-orange-800"
+              : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 ring-1 ring-green-200 dark:ring-green-800"
+          }`}
+        >
+          {opp.isFree === false ? "💰 Berbayar" : "🆓 Gratis"}
+        </span>
       </div>
 
       {/* ── Title ── */}
@@ -484,7 +543,7 @@ export default function OpportunityDetail({ opp }: { opp: DetailOpp }) {
       </div>
 
       {/* ── Info grid ── */}
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-xl bg-white dark:bg-gray-800 p-3 ring-1 ring-gray-100 dark:ring-gray-700">
           <p className="text-[11px] font-medium text-gray-400">Kategori</p>
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{CATEGORY_LABELS[opp.category] || opp.category}</p>
@@ -500,6 +559,12 @@ export default function OpportunityDetail({ opp }: { opp: DetailOpp }) {
         <div className="rounded-xl bg-white dark:bg-gray-800 p-3 ring-1 ring-gray-100 dark:ring-gray-700">
           <p className="text-[11px] font-medium text-gray-400">Penyelenggara</p>
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 line-clamp-2">{opp.organizer}</p>
+        </div>
+        <div className="rounded-xl bg-white dark:bg-gray-800 p-3 ring-1 ring-gray-100 dark:ring-gray-700">
+          <p className="text-[11px] font-medium text-gray-400">Biaya</p>
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            {opp.isFree === false ? "💰 Berbayar" : "🆓 Gratis"}
+          </p>
         </div>
       </div>
 
@@ -549,6 +614,20 @@ export default function OpportunityDetail({ opp }: { opp: DetailOpp }) {
               <span>🌐 Halaman sumber resmi</span>
               <span className="shrink-0 text-gray-400">↗</span>
             </a>
+          </div>
+        </section>
+      )}
+
+      {/* ── Related opportunities ── */}
+      {related.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-lg font-bold text-gray-900 dark:text-white">
+            🏆 {opp.type === "BEASISWA" ? "Beasiswa" : "Lomba"} Serupa
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {related.map((r) => (
+              <RelatedCard key={r.id} opp={r} />
+            ))}
           </div>
         </section>
       )}

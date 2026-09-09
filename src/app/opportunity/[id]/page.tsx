@@ -40,12 +40,28 @@ export default async function OpportunityPage({ params }: Props) {
 
   if (!opp) notFound();
 
+  // Related opportunities: same category or field, soonest deadline first
+  const related = await prisma.opportunity.findMany({
+    where: {
+      id: { not: opp.id },
+      deadline: { gte: new Date() },
+      OR: [{ category: opp.category }, { field: opp.field }],
+    },
+    orderBy: { deadline: "asc" },
+    take: 6,
+  });
+
   // Serialize Date for the client component
   const serialized = {
     ...opp,
     deadline: opp.deadline.toISOString(),
     createdAt: opp.createdAt.toISOString(),
   };
+  const serializedRelated = related.map((r) => ({
+    ...r,
+    deadline: r.deadline.toISOString(),
+    createdAt: r.createdAt.toISOString(),
+  }));
 
-  return <OpportunityDetail opp={serialized} />;
+  return <OpportunityDetail opp={serialized} related={serializedRelated} />;
 }
