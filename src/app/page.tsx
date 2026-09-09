@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
 import type { Opportunity } from "@prisma/client";
 import { useTheme } from "./ThemeProvider";
 
@@ -309,6 +310,7 @@ function CalendarExportButton({ opp }: { opp: CalendarOpp }) {
         <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
           <button
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               window.open(googleCalendarUrl(opp), "_blank", "noopener");
               setOpen(false);
@@ -319,6 +321,7 @@ function CalendarExportButton({ opp }: { opp: CalendarOpp }) {
           </button>
           <button
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               downloadIcs(opp);
               setOpen(false);
@@ -724,14 +727,12 @@ export default function HomePage() {
                         <span className={opp.type === "BEASISWA" ? "badge-beasiswa" : "badge-lomba"}>
                           {opp.type === "BEASISWA" ? "🎓" : "🏆"}
                         </span>
-                        <a
-                          href={opp.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <Link
+                          href={`/opportunity/${opp.id}`}
                           className="truncate text-sm font-semibold text-gray-900 dark:text-white hover:text-amber-600 transition"
                         >
                           {opp.title}
-                        </a>
+                        </Link>
                       </div>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         Deadline: {formatDate(opp.deadline)}
@@ -1031,11 +1032,9 @@ export default function HomePage() {
                     {day}
                   </span>
                   {opps.slice(0, 2).map((opp) => (
-                    <a
+                    <Link
                       key={opp.id}
-                      href={opp.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={`/opportunity/${opp.id}`}
                       className={`block truncate rounded px-1 py-0.5 text-[10px] font-medium mt-0.5 ${
                         opp.type === "BEASISWA"
                           ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
@@ -1044,7 +1043,7 @@ export default function HomePage() {
                       title={opp.title}
                     >
                       {opp.title.length > 15 ? opp.title.slice(0, 15) + "…" : opp.title}
-                    </a>
+                    </Link>
                   ))}
                   {opps.length > 2 && (
                     <span className="block text-[10px] text-gray-500 dark:text-gray-400 px-1">+{opps.length - 2} lagi</span>
@@ -1116,11 +1115,9 @@ export default function HomePage() {
             const isExpired = days < 0;
 
             return (
-              <a
+              <Link
                 key={opp.id}
-                href={opp.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`/opportunity/${opp.id}`}
                 className={`group relative flex flex-col rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm ring-1 transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-400 ${
                   (opp.organizerType || "private") === "dinas"
                     ? "ring-blue-200 dark:ring-blue-800 hover:ring-blue-400 border-t-4 border-t-blue-500"
@@ -1230,7 +1227,11 @@ export default function HomePage() {
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.open(link.url, "_blank", "noopener");
+                            }}
                             className="inline-flex items-center gap-1 rounded-lg bg-brand-50 dark:bg-brand-900/20 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-800 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition"
                           >
                             {link.label}
@@ -1245,9 +1246,14 @@ export default function HomePage() {
 
                 {/* Deadline + Actions */}
                 <div className="mt-3 flex items-center justify-between">
-                  <p className="text-xs text-gray-400">
-                    Deadline: {formatDate(opp.deadline)}
-                  </p>
+                  <div>
+                    <p className="text-xs text-gray-400">
+                      Deadline: {formatDate(opp.deadline)}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-brand-600 dark:text-brand-400 group-hover:underline">
+                      Lihat detail →
+                    </p>
+                  </div>
                   <div className="flex items-center gap-1">
                     {/* Calendar Export */}
                     <CalendarExportButton
@@ -1299,7 +1305,7 @@ export default function HomePage() {
                     </button>
                   </div>
                 </div>
-              </a>
+              </Link>
             );
           })}
         </div>
