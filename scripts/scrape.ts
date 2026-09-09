@@ -10,7 +10,7 @@
  *  6. https://pusatprestasinasional...    — Puspresnas national events
  *  7. https://olimnesia.com/events        — University lomba (JSON in event attrs)
  *  8. https://posi.id/competitions        — POSI olympiads with reg deadlines
- *  9. Annual math competitions (EMC, KMNR) — recurring elite events
+ *  9. Annual math competitions (EMC, SMC, KMNR) — recurring elite events
  *
  * Instagram requires auth and cannot be scraped. Use /admin for those.
  *
@@ -636,7 +636,7 @@ async function scrapePOSI(): Promise<ScrapedEntry[]> {
 // These are annual recurring events with predictable registration windows.
 // Deadlines roll forward each year so the daily auto-scrape keeps them fresh.
 async function scrapeAnnualMath(): Promise<ScrapedEntry[]> {
-  console.log("📡 [9/9] annual math competitions (EMC, KMNR)...");
+  console.log("📡 [9/9] annual math competitions (EMC, SMC, KMNR)...");
   const entries: ScrapedEntry[] = [];
   const now = new Date();
 
@@ -659,6 +659,33 @@ async function scrapeAnnualMath(): Promise<ScrapedEntry[]> {
     links: [
       { label: "📝 Daftar Sekarang", url: "https://emc.competzy.com/" },
       { label: "📄 Jadwal Resmi EMC", url: "https://exademy.com/jadwal-ujian/kompetisi-matematika-emc-smc-kmnr/" },
+    ],
+    organizerType: "private",
+    alarmType: "elite-cup",
+    isRecurring: true,
+  });
+
+  // SMC (SCN Mathematics Competition) — LKP Senyum Cerdas Nusantara
+  // Cycle: registration opens Jan, heat rounds Mar–May, final Jun.
+  // Deadline rolls to end of May each year (last chance to join a heat round).
+  // If we're past 31 May this year, roll to next year's cycle
+  const smcTargetYear = now.getMonth() > 4 || (now.getMonth() === 4 && now.getDate() > 31) ? now.getFullYear() + 1 : now.getFullYear();
+  const smcDeadline = new Date(smcTargetYear, 4, 31); // 31 May
+  entries.push({
+    title: `SMC ${smcTargetYear} (SCN Mathematics Competition)`,
+    type: "LOMBA",
+    category: "SD",
+    description: `Kompetisi nasional Sains & Matematika tahunan oleh LKP Senyum Cerdas Nusantara (SCN) untuk siswa SD, SMP, dan SMA/SMK. Mapel: Matematika, IPA, Bahasa Inggris, IPS. Alur (pola SMC #3 2026): Pendaftaran dibuka Jan, Heat Round Mar–Mei, Final Round Jun.`,
+    organizer: "LKP Senyum Cerdas Nusantara (SCN)",
+    deadline: smcDeadline,
+    location: "OFFLINE",
+    eligibility: `Pelajar SD, SMP, dan SMA/SMK. Pendaftaran dibuka sekitar Januari, heat round Mar–Mei ${smcTargetYear} (jadwal per rayon diumumkan oleh panitia).`,
+    sourceUrl: "https://www.lkpscnindonesia.com/",
+    imageUrl: null,
+    field: "sains_teknologi",
+    links: [
+      { label: "📝 Daftar / Info", url: "https://www.lkpscnindonesia.com/" },
+      { label: "📄 Juknis SMC", url: "https://id.scribd.com/document/1028695649/Juknis-SMC-3-2026" },
     ],
     organizerType: "private",
     alarmType: "elite-cup",
