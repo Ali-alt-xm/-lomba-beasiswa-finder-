@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import type { Opportunity } from "@prisma/client";
 import { useTheme } from "./ThemeProvider";
 
@@ -188,7 +189,7 @@ function shareWhatsApp(opp: { title: string; deadline: Date | string; sourceUrl:
 }
 
 /* ─── Share whole list to WhatsApp ─── */
-function shareListWhatsApp(opps: Array<{ title: string; deadline: Date | string; sourceUrl: string; type: string }>) {
+function shareListWhatsApp(opps: Array<{ title: string; deadline: Date | string; sourceUrl: string; type: string }>, filterUrl?: string) {
   if (!opps.length) return;
 
   const shown = opps.slice(0, 20);
@@ -224,7 +225,7 @@ function shareListWhatsApp(opps: Array<{ title: string; deadline: Date | string;
     lines.push("");
   }
 
-  lines.push(`🔗 Lihat semua: https://beasiswa-finder-ali.netlify.app`);
+  lines.push(`🔗 Lihat semua: ${filterUrl || "https://beasiswa-finder-ali.netlify.app"}`);
   lines.push("_Ditemukan di Lomba & Beasiswa Finder_");
 
   window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
@@ -464,7 +465,7 @@ function FeedbackButton() {
   );
 }
 
-export default function HomePage() {
+function HomePageInner() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -487,6 +488,78 @@ export default function HomePage() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [urlReady, setUrlReady] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Initialize filters from URL params on mount
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    const t = searchParams.get("tipe") || "ALL";
+    const c = searchParams.get("kategori") || "ALL";
+    const l = searchParams.get("lokasi") || "ALL";
+    const o = searchParams.get("penyelenggara") || "ALL";
+    const f = searchParams.get("bidang") || "ALL";
+    const ot = searchParams.get("org") || "ALL";
+    const b = searchParams.get("biaya") || "ALL";
+    const bm = searchParams.get("bookmark") === "1";
+
+    if (q) setSearchQuery(q);
+    if (t !== "ALL") setTypeFilter(t);
+    if (c !== "ALL") setCategoryFilter(c);
+    if (l !== "ALL") setLocationFilter(l);
+    if (o !== "ALL") setOrganizerFilter(o);
+    if (f !== "ALL") setFieldFilter(f);
+    if (ot !== "ALL") setOrgTypeFilter(ot);
+    if (b !== "ALL") setBiayaFilter(b);
+    if (bm) setShowBookmarksOnly(true);
+    setUrlReady(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Build current filter URL
+  const buildFilterUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("q", searchQuery);
+    if (typeFilter !== "ALL") params.set("tipe", typeFilter);
+    if (categoryFilter !== "ALL") params.set("kategori", categoryFilter);
+    if (locationFilter !== "ALL") params.set("lokasi", locationFilter);
+    if (organizerFilter !== "ALL") params.set("penyelenggara", organizerFilter);
+    if (fieldFilter !== "ALL") params.set("bidang", fieldFilter);
+    if (orgTypeFilter !== "ALL") params.set("org", orgTypeFilter);
+    if (biayaFilter !== "ALL") params.set("biaya", biayaFilter);
+    if (showBookmarksOnly) params.set("bookmark", "1");
+    const qs = params.toString();
+    return `https://beasiswa-finder-ali.netlify.app${qs ? `?${qs}` : ""}`;
+  }, [searchQuery, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, biayaFilter, showBookmarksOnly]);
+
+  // Push URL when filters change (after initial load)
+  useEffect(() => {
+    if (!urlReady) return;
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("q", searchQuery);
+    if (typeFilter !== "ALL") params.set("tipe", typeFilter);
+    if (categoryFilter !== "ALL") params.set("kategori", categoryFilter);
+    if (locationFilter !== "ALL") params.set("lokasi", locationFilter);
+    if (organizerFilter !== "ALL") params.set("penyelenggara", organizerFilter);
+    if (fieldFilter !== "ALL") params.set("bidang", fieldFilter);
+    if (orgTypeFilter !== "ALL") params.set("org", orgTypeFilter);
+    if (biayaFilter !== "ALL") params.set("biaya", biayaFilter);
+    if (showBookmarksOnly) params.set("bookmark", "1");
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "/", { scroll: false });
+  }, [urlReady, searchQuery, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, biayaFilter, showBookmarksOnly, router]);
+
+  // Copy link to clipboard
+  const copyFilterLink = useCallback(() => {
+    const url = buildFilterUrl();
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }, [buildFilterUrl]);
 
   useEffect(() => {
     fetch("/api/opportunities")
@@ -732,11 +805,18 @@ export default function HomePage() {
             📅 Kalender
           </button>
           <button
-            onClick={() => shareListWhatsApp(filtered)}
+            onClick={() => shareListWhatsApp(filtered, buildFilterUrl())}
             className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 ring-1 ring-green-200 dark:ring-green-800 hover:bg-green-100 dark:hover:bg-green-900/30 transition"
             title="Bagikan daftar ini ke WhatsApp"
           >
             📤 Share
+          </button>
+          <button
+            onClick={copyFilterLink}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            title="Salin link dengan filter aktif"
+          >
+            {copied ? "✅ Tersalin!" : "🔗 Salin Link"}
           </button>
           {bookmarkIds.length > 0 && (
             <button
@@ -1446,5 +1526,25 @@ export default function HomePage() {
       {/* ── Feedback Button ── */}
       <FeedbackButton />
     </main>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-3 h-10 w-72 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+          <div className="mx-auto h-4 w-48 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-64 animate-pulse rounded-2xl bg-white dark:bg-gray-800 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700" />
+          ))}
+        </div>
+      </main>
+    }>
+      <HomePageInner />
+    </Suspense>
   );
 }
