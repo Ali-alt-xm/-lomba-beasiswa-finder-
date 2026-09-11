@@ -384,7 +384,7 @@ export default function OpportunityDetail({
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-300">
       {/* ── Back ── */}
       <Link
         href="/"

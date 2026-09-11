@@ -691,7 +691,7 @@ export default function HomePage() {
   }, [opportunities, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, biayaFilter, showBookmarksOnly, bookmarkIds, searchQuery]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-300">
       {/* ── Header ── */}
       <header className="mb-8 text-center">
         <div className="flex items-center justify-between">
@@ -1139,16 +1139,30 @@ export default function HomePage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="h-64 animate-pulse rounded-2xl bg-white dark:bg-gray-800 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700"
+              className="animate-pulse rounded-2xl bg-white dark:bg-gray-800 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden"
+              style={{ animationDelay: `${i * 75}ms` }}
             >
+              {/* Colored top border placeholder */}
+              <div className="h-1 w-full bg-gray-200 dark:bg-gray-700" />
               <div className="p-5">
-                <div className="mb-3 h-5 w-20 rounded-full bg-gray-200 dark:bg-gray-700" />
-                <div className="mb-2 h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-                <div className="mb-3 h-4 w-full rounded bg-gray-100 dark:bg-gray-700" />
-                <div className="mb-3 h-4 w-2/3 rounded bg-gray-100 dark:bg-gray-700" />
-                <div className="mt-4 flex gap-2">
-                  <div className="h-5 w-16 rounded bg-gray-200 dark:bg-gray-700" />
-                  <div className="h-5 w-24 rounded bg-gray-200 dark:bg-gray-700" />
+                {/* Type badge + bookmark row */}
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700" />
+                  <div className="h-5 w-14 rounded-full bg-gray-100 dark:bg-gray-800" />
+                  <div className="ml-auto h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
+                </div>
+                {/* Title */}
+                <div className="mb-2 h-5 w-4/5 rounded bg-gray-200 dark:bg-gray-700" />
+                <div className="mb-3 h-5 w-3/5 rounded bg-gray-200 dark:bg-gray-700" />
+                {/* Description lines */}
+                <div className="mb-1.5 h-3 w-full rounded bg-gray-100 dark:bg-gray-800" />
+                <div className="mb-1.5 h-3 w-5/6 rounded bg-gray-100 dark:bg-gray-800" />
+                <div className="mb-3 h-3 w-2/3 rounded bg-gray-100 dark:bg-gray-800" />
+                {/* Meta tags row */}
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+                  <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" />
+                  <div className="h-4 w-14 rounded bg-gray-200 dark:bg-gray-700" />
                 </div>
               </div>
             </div>
@@ -1189,7 +1203,7 @@ export default function HomePage() {
       {/* ── Card Grid ── */}
       {!loading && !showCalendar && filtered.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((opp) => {
+          {filtered.map((opp, idx) => {
             const days = daysLeft(opp.deadline);
             const isUrgent = days <= 7;
             const isExpired = days < 0;
@@ -1198,11 +1212,12 @@ export default function HomePage() {
               <Link
                 key={opp.id}
                 href={`/opportunity/${opp.id}`}
-                className={`group relative flex flex-col rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm ring-1 transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-400 ${
+                className={`group relative flex flex-col rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm ring-1 transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-400 animate-card ${
                   (opp.organizerType || "private") === "dinas"
                     ? "ring-blue-200 dark:ring-blue-800 hover:ring-blue-400 border-t-4 border-t-blue-500"
                     : "ring-gray-100 dark:ring-gray-700 hover:ring-brand-200 border-t-4 border-t-purple-400"
                 }`}
+                style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
               >
                 {/* Type + Organizer badge */}
                 <div className="mb-3 flex items-center gap-2 flex-wrap">

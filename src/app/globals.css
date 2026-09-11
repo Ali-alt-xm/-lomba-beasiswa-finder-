@@ -48,3 +48,43 @@
     @apply inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300;
   }
 }
+
+/* ─── Page transition animations ─── */
+@layer utilities {
+  .animate-in {
+    animation: fadeSlideIn 0.3s ease-out both;
+  }
+  .animate-fade {
+    animation: fadeIn 0.2s ease-out both;
+  }
+  .animate-card {
+    animation: cardIn 0.35s ease-out both;
+  }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

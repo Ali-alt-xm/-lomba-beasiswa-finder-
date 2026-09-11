@@ -136,7 +136,7 @@ export default async function StatsPage() {
   const nextDeadline = upcoming[0]?.deadline;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-300">
       <Link
         href="/"
         className="mb-4 inline-flex items-center gap-1.5 rounded-xl bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
