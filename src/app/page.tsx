@@ -367,24 +367,29 @@ function FeedbackButton() {
   const [feedback, setFeedback] = useState("");
   const [type, setType] = useState<string>("saran");
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!feedback.trim()) return;
-    // Save to localStorage (simple analytics)
-    const existing = JSON.parse(localStorage.getItem("feedback") || "[]");
-    existing.push({
-      text: feedback,
-      type,
-      timestamp: new Date().toISOString(),
-      url: window.location.href,
-    });
-    localStorage.setItem("feedback", JSON.stringify(existing));
+    setSending(true);
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: feedback,
+          type,
+          url: window.location.href,
+        }),
+      });
+    } catch {}
+    setSending(false);
     setSubmitted(true);
     setTimeout(() => {
       setIsOpen(false);
       setFeedback("");
       setSubmitted(false);
-    }, 2000);
+    }, 2500);
   };
 
   return (
@@ -451,10 +456,10 @@ function FeedbackButton() {
                 </div>
                 <button
                   onClick={handleSubmit}
-                  disabled={!feedback.trim()}
+                  disabled={!feedback.trim() || sending}
                   className="w-full rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Kirim Feedback
+                  {sending ? "Mengirim..." : "Kirim Feedback"}
                 </button>
               </>
             )}
