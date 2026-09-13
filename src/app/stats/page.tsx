@@ -8,6 +8,18 @@ export const metadata: Metadata = {
   title: "Statistik — Lomba & Beasiswa Finder",
   description:
     "Lihat berapa banyak beasiswa dan lomba yang sedang dibuka, berdasarkan kategori, bidang, dan penyelenggara.",
+  alternates: {
+    canonical: "https://beasiswa-finder-ali.netlify.app/stats",
+  },
+  openGraph: {
+    title: "Statistik — Lomba & Beasiswa Finder",
+    description:
+      "Lihat berapa banyak beasiswa dan lomba yang sedang dibuka, berdasarkan kategori, bidang, dan penyelenggara.",
+    url: "https://beasiswa-finder-ali.netlify.app/stats",
+    siteName: "Lomba & Beasiswa Finder",
+    locale: "id_ID",
+    type: "website",
+  },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {

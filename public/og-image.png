@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ec7a0d"/>
+      <stop offset="100%" style="stop-color:#dd5f08"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#fef7ee"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="200" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="1100" cy="530" r="250" fill="rgba(255,255,255,0.05)"/>
+  <!-- Card -->
+  <rect x="80" y="80" width="1040" height="470" rx="32" fill="url(#card)" opacity="0.95"/>
+  <!-- Title -->
+  <text x="600" y="180" text-anchor="middle" font-size="56" fill="#1a1a1a" font-family="Arial, Helvetica, sans-serif" font-weight="bold">Lomba &amp; Beasiswa Finder</text>
+  <!-- Subtitle -->
+  <text x="600" y="240" text-anchor="middle" font-size="28" fill="#6b7280" font-family="Arial, Helvetica, sans-serif">Temukan kesempatan terbaik untuk masa depanmu</text>
+  <!-- Stats row -->
+  <rect x="160" y="300" width="220" height="100" rx="16" fill="#ec7a0d" opacity="0.1"/>
+  <text x="270" y="345" text-anchor="middle" font-size="36" fill="#ec7a0d" font-family="Arial, Helvetica, sans-serif" font-weight="bold">178+</text>
+  <text x="270" y="380" text-anchor="middle" font-size="18" fill="#6b7280" font-family="Arial, Helvetica, sans-serif">Kesempatan Aktif</text>
+
+  <rect x="490" y="300" width="220" height="100" rx="16" fill="#10b981" opacity="0.1"/>
+  <text x="600" y="345" text-anchor="middle" font-size="36" fill="#10b981" font-family="Arial, Helvetica, sans-serif" font-weight="bold">9</text>
+  <text x="600" y="380" text-anchor="middle" font-size="18" fill="#6b7280" font-family="Arial, Helvetica, sans-serif">Sumber Auto-Scrape</text>
+
+  <rect x="820" y="300" width="220" height="100" rx="16" fill="#8b5cf6" opacity="0.1"/>
+  <text x="930" y="345" text-anchor="middle" font-size="36" fill="#8b5cf6" font-family="Arial, Helvetica, sans-serif" font-weight="bold">100%</text>
+  <text x="930" y="380" text-anchor="middle" font-size="18" fill="#6b7280" font-family="Arial, Helvetica, sans-serif">Gratis</text>
+
+  <!-- Tags -->
+  <text x="600" y="470" text-anchor="middle" font-size="20" fill="#9ca3af" font-family="Arial, Helvetica, sans-serif">SD  |  SMP  |  SMA/SMK  |  Kuliah  |  Dinas  |  Swasta</text>
+  <!-- Footer -->
+  <text x="600" y="520" text-anchor="middle" font-size="18" fill="#d1d5db" font-family="Arial, Helvetica, sans-serif">beasiswa-finder-ali.netlify.app</text>
+</svg>

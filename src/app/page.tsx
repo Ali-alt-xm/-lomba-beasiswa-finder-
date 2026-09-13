@@ -768,8 +768,29 @@ function HomePageInner() {
     return result;
   }, [opportunities, typeFilter, categoryFilter, locationFilter, organizerFilter, fieldFilter, orgTypeFilter, biayaFilter, showBookmarksOnly, bookmarkIds, searchQuery]);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Lomba & Beasiswa Finder",
+    url: "https://beasiswa-finder-ali.netlify.app",
+    description: "Temukan beasiswa dan lomba terbaru untuk pelajar Indonesia. Update otomatis setiap hari.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: "https://beasiswa-finder-ali.netlify.app?q={search_term_string}",
+      },
+      "query-input": "required name=search_term_string",
+    },
+    inLanguage: "id",
+  };
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-300">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ── Header ── */}
       <header className="mb-8 text-center">
         <div className="flex items-center justify-between">
