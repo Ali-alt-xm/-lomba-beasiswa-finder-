@@ -905,10 +905,17 @@ async function upsertEntries(entries: ScrapedEntry[]) {
   return { created, updated, skipped };
 }
 
-// ─── Cleanup: remove all expired entries ────────────────────────
+// ─── Cleanup: remove entries expired >30 days ago ───────────────
+// Grace period: past-deadline entries stay in the DB for 30 days
+// (useful for reminders/history), then get purged on the next run.
+const GRACE_PERIOD_DAYS = 30;
+
 async function cleanupExpired(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - GRACE_PERIOD_DAYS);
+
   const { count } = await prisma.opportunity.deleteMany({
-    where: { deadline: { lt: new Date() } },
+    where: { deadline: { lt: cutoff } },
   });
 
   return count;

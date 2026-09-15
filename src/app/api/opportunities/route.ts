@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    // Only serve entries that haven't expired yet. Expired entries linger in
+    // the DB for a 30-day grace period (purged by the scraper's cleanup),
+    // but users should never see them.
     const opportunities = await prisma.opportunity.findMany({
+      where: { deadline: { gte: new Date() } },
       orderBy: { deadline: "asc" },
     });
     return NextResponse.json(opportunities);
