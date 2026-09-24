@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { rateLimit, clientKey } from "@/lib/rateLimit";
+import { isAuthorized } from "@/lib/adminAuth";
 
-const prisma = new PrismaClient();
+export const dynamic = "force-dynamic";
 
 type Context = {
   params: { id: string };
 };
 
-export async function GET(
-  _request: NextRequest,
-  context: Context
-) {
+export async function GET(_request: NextRequest, context: Context) {
   try {
     const { id } = context.params;
     const opportunity = await prisma.opportunity.findUnique({
@@ -24,7 +23,11 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(opportunity);
+    return NextResponse.json(opportunity, {
+      headers: {
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      },
+    });
   } catch (error) {
     console.error("Failed to fetch opportunity:", error);
     return NextResponse.json(
@@ -34,10 +37,19 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: Context
-) {
+export async function PUT(request: NextRequest, context: Context) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limit = rateLimit(clientKey(request, "opp-write"), 30, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   try {
     const { id } = context.params;
     const body = await request.json();
@@ -69,10 +81,19 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  context: Context
-) {
+export async function DELETE(request: NextRequest, context: Context) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limit = rateLimit(clientKey(request, "opp-write"), 30, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   try {
     const { id } = context.params;
     await prisma.opportunity.delete({

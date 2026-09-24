@@ -806,6 +806,7 @@ function HomePageInner() {
           <div className="flex-1 flex justify-end">
             <button
               onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              aria-label={resolvedTheme === "dark" ? "Mode terang" : "Mode gelap"}
               className="rounded-xl bg-white dark:bg-gray-800 p-2.5 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
               title={resolvedTheme === "dark" ? "Mode terang" : "Mode gelap"}
             >
@@ -1002,7 +1003,7 @@ function HomePageInner() {
       <div className="mb-6 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-md ring-1 ring-brand-100 dark:ring-gray-700">
         {/* Search */}
         <div className="relative mb-4">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-5 w-5"
@@ -1010,6 +1011,8 @@ function HomePageInner() {
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={2}
+              role="img"
+              aria-label="Cari"
             >
               <path
                 strokeLinecap="round"
@@ -1018,7 +1021,9 @@ function HomePageInner() {
               />
             </svg>
           </span>
+          <label htmlFor="search-input" className="sr-only">Cari beasiswa atau lomba</label>
           <input
+            id="search-input"
             type="text"
             placeholder="Cari beasiswa atau lomba…"
             value={searchQuery}
@@ -1171,6 +1176,7 @@ function HomePageInner() {
       )}
 
       {/* ── Calendar View ── */}
+      <section aria-label="Kalender kesempatan">
       {showCalendar && !loading && (
         <div className="mb-6 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-md ring-1 ring-brand-100 dark:ring-gray-700">
           {/* Month navigation */}
@@ -1234,10 +1240,11 @@ function HomePageInner() {
                   )}
                 </div>
               );
-            })}
+            }          )}
           </div>
         </div>
       )}
+      </section>
 
       {/* ── Loading State ── */}
       {loading && !showCalendar && (
@@ -1308,6 +1315,7 @@ function HomePageInner() {
 
       {/* ── Card Grid ── */}
       {!loading && !showCalendar && filtered.length > 0 && (
+        <section>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((opp, idx) => {
             const days = daysLeft(opp.deadline);
@@ -1483,6 +1491,7 @@ function HomePageInner() {
                         e.stopPropagation();
                         shareWhatsApp({ title: opp.title, deadline: opp.deadline, sourceUrl: opp.sourceUrl, type: opp.type });
                       }}
+                      aria-label="Share lomba ini ke WhatsApp"
                       className="rounded-lg p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition"
                       title="Share ke WhatsApp"
                     >
@@ -1500,6 +1509,7 @@ function HomePageInner() {
                           ? "bg-yellow-100 text-yellow-600 hover:bg-yellow-200"
                           : "text-gray-300 hover:bg-gray-100 hover:text-yellow-500"
                       }`}
+                      aria-label={bookmarkIds.includes(opp.id) ? "Hapus dari simpanan" : "Simpan ke bookmark"}
                       title={bookmarkIds.includes(opp.id) ? "Hapus bookmark" : "Simpan (bookmark)"}
                     >
                       {bookmarkIds.includes(opp.id) ? "⭐" : "☆"}
@@ -1542,6 +1552,7 @@ function HomePageInner() {
             );
           })}
         </div>
+      </section>
       )}
 
       {/* ── Footer ── */}
