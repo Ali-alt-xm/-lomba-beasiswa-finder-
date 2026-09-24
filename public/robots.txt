@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /login
 Disallow: /api/
 
 Sitemap: https://beasiswa-finder-ali.netlify.app/sitemap.xml

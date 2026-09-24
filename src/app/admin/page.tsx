@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { Opportunity } from "@prisma/client";
 import { useTheme } from "../ThemeProvider";
 
@@ -58,6 +59,7 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
 
   const fetchOpportunities = useCallback(async () => {
     try {
@@ -148,6 +150,12 @@ export default function AdminPage() {
 
   const { resolvedTheme, setTheme } = useTheme();
 
+  async function handleLogout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
+
   const inputClass =
     "w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200";
 
@@ -175,6 +183,12 @@ export default function AdminPage() {
           >
             ← Kembali ke Beranda
           </a>
+          <button
+            onClick={handleLogout}
+            className="rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition ring-1 ring-gray-200 dark:ring-gray-700"
+          >
+            Keluar
+          </button>
         </div>
       </header>
 
