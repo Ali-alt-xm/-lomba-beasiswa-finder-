@@ -10,8 +10,8 @@ import { rateLimit, clientKey } from "@/lib/rateLimit";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  // Throttle guessing: 10 attempts per minute per IP.
-  const limit = rateLimit(clientKey(request, "admin-login"), 10, 60_000);
+  // Throttle guessing: 10 attempts per minute per IP, shared across instances.
+  const limit = await rateLimit(clientKey(request, "admin-login"), 10, 60_000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Terlalu banyak percobaan. Coba lagi sebentar lagi." },

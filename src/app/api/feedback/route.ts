@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, clientKey } from "@/lib/rateLimit";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  // Public endpoint, shared counter: 5 messages per 10 minutes per IP.
+  const limit = await rateLimit(clientKey(req, "feedback"), 5, 600_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Terlalu banyak pesan. Coba lagi nanti." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   try {
     const { text, type, url } = await req.json();
 
@@ -40,7 +52,8 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: "Failed to send" }, { status: 500 });
     }
-  } catch {
+  } catch (error) {
+    console.error("Feedback failed:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

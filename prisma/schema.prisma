@@ -31,6 +31,20 @@ model Opportunity {
   @@map("opportunities")
 }
 
+// Shared rate-limit counters. One row per (key, window); the unique index on
+// (key, expiresAt) lets the limiter upsert atomically without read-modify-write
+// races across serverless instances.
+model RateLimit {
+  id        String   @id @default(cuid())
+  key       String
+  count     Int      @default(0)
+  expiresAt DateTime @map("expires_at")
+
+  @@unique([key, expiresAt])
+  @@index([expiresAt])
+  @@map("rate_limits")
+}
+
 model PushSubscription {
   id             String   @id @default(cuid())
   endpoint       String   @unique

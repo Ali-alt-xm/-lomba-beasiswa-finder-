@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest, context: Context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limit = rateLimit(clientKey(request, "opp-write"), 30, 60_000);
+  const limit = await rateLimit(clientKey(request, "opp-write"), 30, 60_000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Too many requests" },
@@ -86,7 +86,7 @@ export async function DELETE(request: NextRequest, context: Context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limit = rateLimit(clientKey(request, "opp-write"), 30, 60_000);
+  const limit = await rateLimit(clientKey(request, "opp-write"), 30, 60_000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Too many requests" },
