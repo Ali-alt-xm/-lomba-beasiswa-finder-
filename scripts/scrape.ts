@@ -11,8 +11,10 @@
  *  7. https://olimnesia.com/events        — University lomba (JSON in event attrs)
  *  8. https://posi.id/competitions        — POSI olympiads with reg deadlines
  *  9. Annual math competitions (EMC, SMC, KMNR) — recurring elite events
- *
- * Instagram requires auth and cannot be scraped. Use /admin for those.
+ * 10. https://infolomba.id/               — School-club & student cups. This is where
+ *     prestigious high-school events (Thamrin Olympiad and Cup, Frateran Digital
+ *     Challenge, Tarakanita, Al-Fityan, ...) surface with real deadlines — most
+ *     organize promo only on Instagram, which cannot be scraped.
  *
  * Usage: npx tsx scripts/scrape.ts
  */
@@ -844,6 +846,93 @@ async function scrapePuspresnas(): Promise<ScrapedEntry[]> {
   }
 }
 
+// ─── Scraper 10: infolomba.id (school-club cups & student competitions) ─
+// Homepage is server-rendered HTML: one .event-container card per listing with
+// jenjang, fee, location, date range and organizer. This is the only public,
+// scrapeable surface where prestigious school events (TOC/MHT, Frateran,
+// Tarakanita, Al-Fityan, ...) publish registration deadlines.
+async function scrapeInfoLomba(): Promise<ScrapedEntry[]> {
+  console.log("📡 [10/10] infolomba.id (school-club cups)...");
+  try {
+    const res = await fetch("https://infolomba.id/", {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; BeasiswaFinder/1.0)" },
+    });
+    const html = await res.text();
+    const entries: ScrapedEntry[] = [];
+
+    const strip = (s: string) =>
+      s.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+
+    const cardRegex =
+      /<div class="event-container[\s\S]*?<h4 class="event-title mb-1"><a href="([^"]+)">([^<]+)<\/a><\/h4>([\s\S]*?)<div class="penyelenggara">[\s\S]*?<span>([^<]+)<\/span>/g;
+
+    let match: RegExpExecArray | null;
+    while ((match = cardRegex.exec(html)) !== null) {
+      try {
+        const [, href, rawTitle, metaBlock, rawOrganizer] = match;
+        const title = rawTitle.trim();
+
+        // Pull the four meta lines out of the card body
+        const pick = (cls: string): string => {
+          const r = metaBlock.match(
+            new RegExp(`<div class="${cls}[^"]*"[\\s\\S]*?<img[^>]*>([\\s\\S]*?)</div>`)
+          );
+          return r ? strip(r[1]) : "";
+        };
+        const jenjang = pick("target");
+        const fee = pick("biaya");
+        const lokasi = pick("lokasi");
+        const tanggal = pick("tanggal");
+        const organizer = strip(rawOrganizer);
+
+        // The card shows "start - end"; the registration deadline is the end date.
+        // "1 - 30 Sep 2026" has no month on the first number, so pad it from the
+        // second half before parsing.
+        const parts = tanggal.split(" - ").map((p) => p.trim());
+        const endDateStr = parts.length === 2 ? parts[1] : tanggal;
+        const deadline = parseIndonesianDate(endDateStr);
+        if (!deadline || deadline < new Date()) continue;
+
+        // Detail page slug — used as the canonical link for "daftar/info"
+        const detailUrl = href.startsWith("http") ? href : `https://infolomba.id/${href}`;
+
+        // Optional poster image (first poster asset inside the card)
+        const cardHtml = html.slice(match.index, match.index + match[0].length + 2000);
+        const posterMatch = cardHtml.match(/images\/event\/poster\/[^"\s]+?\.(?:jpe?g|png|webp)/);
+        const imageUrl = posterMatch ? `https://infolomba.id/${posterMatch[0]}` : null;
+
+        const isPaid = /^rp\s?\d/i.test(fee);
+
+        entries.push({
+          title,
+          type: "LOMBA",
+          category: categorizeLevel(jenjang || title),
+          description: `${title}. ${jenjang ? `Untuk ${jenjang}. ` : ""}${
+            fee ? `Biaya pendaftaran: ${fee}. ` : ""
+          }Dipelajari & dikurasi dari InfoLomba.id — cek halaman detail untuk poster, panduan, dan kontak panitia.`,
+          organizer: organizer || "InfoLomba.id",
+          deadline,
+          location: categorizeLocation(lokasi || ""),
+          eligibility: jenjang || "Cek halaman detail",
+          sourceUrl: detailUrl,
+          imageUrl,
+          field: categorizeField(title, jenjang),
+          links: [{ label: "📄 Detail & Pendaftaran", url: detailUrl }],
+          isFree: !isPaid,
+        });
+      } catch {
+        // skip malformed card
+      }
+    }
+
+    console.log(`   ✅ ${entries.length} entries`);
+    return entries;
+  } catch (err) {
+    console.error("   ❌ Failed:", err);
+    return [];
+  }
+}
+
 // ─── Upsert into database ────────────────────────────────────────
 async function upsertEntries(entries: ScrapedEntry[]) {
   let created = 0;
@@ -923,7 +1012,7 @@ async function cleanupExpired(): Promise<number> {
 
 // ─── Main ────────────────────────────────────────────────────────
 async function main() {
-  console.log("🚀 Starting scraper (9 sources)...\n");
+  console.log("🚀 Starting scraper (10 sources)...\n");
 
   const results = await Promise.all([
     scrapeLuarkampusBeasiswa(),
@@ -935,6 +1024,7 @@ async function main() {
     scrapeOlimnesia(),
     scrapePOSI(),
     scrapeAnnualMath(),
+    scrapeInfoLomba(),
   ]);
 
   const allEntries = results.flat();
