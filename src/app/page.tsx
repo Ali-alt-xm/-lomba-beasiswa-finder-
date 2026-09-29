@@ -1557,7 +1557,7 @@ function HomePageInner() {
 
       {/* ── Footer ── */}
       <footer className="mt-12 border-t border-brand-100 dark:border-gray-700 py-6 text-center text-xs text-gray-400 dark:text-gray-500">
-        Lomba & Beasiswa Finder — Dibuat dengan ❤️ untuk mahasiswa Indonesia
+        Lomba & Beasiswa Finder — Dibuat dengan ❤️ untuk generasi muda ambisius Indonesia
       </footer>
 
       {/* ── Feedback Button ── */}
